@@ -1,0 +1,37 @@
+# https://www.schemastore.org/github-action.json
+name: "AI Issue"
+description: "AI Issue Action."
+author: "Shane"
+
+branding:
+  icon: "cloud-lightning"
+  color: "orange"
+
+inputs:
+  model:
+    description: "Model to Use"
+    required: true
+  instructions:
+    description: "Text Instructions"
+  file:
+    description: "Files Glob Instructions"
+  max_tokens:
+    description: "Max Output Tokens"
+    default: "1024"
+  #number:
+  #  description: "Optional Issue Number"
+  token:
+    description: "GitHub Token"
+    default: ${{ github.token }}
+
+outputs:
+  text:
+    description: "Response Text"
+  usage:
+    description: "Output JSON"
+  comment:
+    description: "Comment JSON"
+
+runs:
+  using: "node24"
+  main: "dist/index.js"

@@ -1,0 +1,98 @@
+name: "Test"
+
+# actions-up-ignore-file
+
+on:
+  workflow_dispatch:
+  #push:
+  #  branches-ignore: [master]
+  #  paths:
+  #    - ".github/workflows/test.yaml"
+  #    - "dist/**"
+  #    - "src/**"
+  #    - "package*.json"
+  #    - "requirements*.txt"
+  #    - "action.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: "Test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v6
+
+      - name: "Debug event.json"
+        if: ${{ !github.event.act }}
+        continue-on-error: true
+        run: cat "${GITHUB_EVENT_PATH}"
+      - name: "Debug CTX github"
+        if: ${{ !github.event.act }}
+        continue-on-error: true
+        env:
+          GITHUB_CTX: ${{ toJSON(github) }}
+        run: echo "$GITHUB_CTX"
+      - name: "Debug Environment"
+        if: ${{ !github.event.act }}
+        continue-on-error: true
+        run: env
+
+      #- name: "Debug"
+      #  continue-on-error: true
+      #  run: |
+      #    ls -lah .
+
+      #- name: "Create App Token"
+      #  if: ${{ !github.event.release.prerelease }}
+      #  id: app
+      #  uses: actions/create-github-app-token@v2
+      #  with:
+      #    app-id: 146360
+      #    private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      #    owner: smashedr
+      #    repositories: test5
+
+      #- name: "Debug Token"
+      #  continue-on-error: true
+      #  run: |
+      #    echo "${{ steps.app.outputs.token }}"
+
+      - name: "Test Local Action"
+        id: test
+        uses: ./
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          #model: gpt-4.1-nano
+          model: gemini-2.5-flash
+          #model: claude-haiku-4-5
+          #instructions: ""
+          file: .github/instructions/*.md
+          max_tokens: 256
+          #token: ${{ steps.app.outputs.token }}
+          #token: ${{ SECRETS.APP_TOKEN }}
+
+      - name: "Echo Outputs"
+        env:
+          usage: ${{ steps.test.outputs.usage }}
+          comment: ${{ steps.test.outputs.comment }}
+        run: |
+          echo "text: ${{ steps.test.outputs.text }}"
+          echo "usage: ${usage}"
+          echo "comment: ${comment}"
+
+      #- name: "Validate Outputs"
+      #  if: ${{ !github.event.act }}
+      #  uses: cssnr/validate-outputs-action@master
+      #  with:
+      #    outputs: ${{ toJSON(steps.test.outputs) }}
+      #    data: |
+      #      sha: ${{ github.sha }}
