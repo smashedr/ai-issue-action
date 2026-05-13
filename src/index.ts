@@ -15,6 +15,8 @@ const inputs = {
   file: core.getInput('file'),
   maxTokens: core.getInput('max_tokens'),
   // number: core.getInput('number'),
+  head: core.getInput('head'),
+  tail: core.getInput('tail'),
   token: core.getInput('token', { required: true }),
 } as const
 
@@ -63,7 +65,7 @@ async function main() /* NOSONAR */ {
 
   const response = await generateText({
     prompt: body,
-    system: instructions.join('\n'),
+    system: instructions.join('\n\n'),
     model: model,
     maxOutputTokens: maxTokens,
     providerOptions: { openai: { serviceTier: 'flex', reasoningEffort: 'none' } },
@@ -79,11 +81,16 @@ async function main() /* NOSONAR */ {
   console.log(response.text)
   core.endGroup() // text
 
+  const result = [inputs.head, response.text, inputs.tail].filter(Boolean).join('\n\n')
+  core.startGroup('result')
+  console.log(result)
+  core.endGroup() // result
+
   const octokit = github.getOctokit(inputs.token)
   const comment = await octokit.rest.issues.createComment({
     ...github.context.repo,
     issue_number: issue.number,
-    body: response.text,
+    body: result,
   })
   core.startGroup('comment')
   console.log(comment)
@@ -93,6 +100,7 @@ async function main() /* NOSONAR */ {
   core.info('📩 Setting Outputs')
   core.setOutput('text', response.text)
   core.setOutput('usage', response.usage)
+  // core.setOutput('body', response.response.body)
   core.setOutput('comment', comment.data)
 
   core.info(`✅ \u001b[32;1mFinished Success`)
