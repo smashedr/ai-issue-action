@@ -34,28 +34,32 @@ async function main() /* NOSONAR */ {
 
   const issue = github.context.payload.issue
   if (!issue) return core.setFailed('No Issue')
-  core.startGroup(`issue #${issue.number}`)
+  core.startGroup(`Issue #${issue.number}`)
   console.log(issue)
   core.endGroup() // issue
 
   const title = issue.title
-  console.log('title:', title)
+  console.log('Issue Title:', title)
   if (!title) return core.setFailed('No Issue Title')
 
   const body = issue.body
-  console.log('body:', body)
+  core.startGroup('Issue Body')
+  console.log(body)
+  core.endGroup() // body
   if (!body) return core.setFailed('No Issue Body')
 
   const instructions = await getInstructions(inputs)
-  console.log('instructions:', instructions)
+  core.startGroup('Instructions')
+  console.log(JSON.stringify(instructions, null, 2))
+  core.endGroup() // instructions
   if (!instructions.length) return core.setFailed('No Instructions')
 
   const model = getModel(inputs)
-  console.log('model:', model.modelId)
+  console.log('Model:', model.modelId)
   if (!model.modelId) return core.setFailed('No Model')
 
-  const maxTokens = Number.parseInt(inputs.maxTokens) || 1024
-  console.log('maxTokens:', maxTokens)
+  const maxTokens = Number.parseInt(inputs.maxTokens) || 2048
+  console.log('Max Tokens:', maxTokens)
 
   const response = await generateText({
     prompt: body,
@@ -110,9 +114,10 @@ async function getInstructions(inputs: Inputs): Promise<string[]> {
   if (inputs.file) {
     const globber = await glob.create(inputs.file)
     for await (const file of globber.globGenerator()) {
-      console.log('file:', file)
       const text = readFileSync(file, 'utf8').trim()
-      console.log('text:', text)
+      core.startGroup(file)
+      console.log(text)
+      core.endGroup() // body
       if (text) results.push(text)
     }
   }

@@ -70839,27 +70839,31 @@ async function main() {
     const issue = context$1.payload.issue;
     if (!issue)
         return setFailed('No Issue');
-    startGroup(`issue #${issue.number}`);
+    startGroup(`Issue #${issue.number}`);
     console.log(issue);
     endGroup();
     const title = issue.title;
-    console.log('title:', title);
+    console.log('Issue Title:', title);
     if (!title)
         return setFailed('No Issue Title');
     const body = issue.body;
-    console.log('body:', body);
+    startGroup('Issue Body');
+    console.log(body);
+    endGroup();
     if (!body)
         return setFailed('No Issue Body');
     const instructions = await getInstructions(inputs);
-    console.log('instructions:', instructions);
+    startGroup('Instructions');
+    console.log(JSON.stringify(instructions, null, 2));
+    endGroup();
     if (!instructions.length)
         return setFailed('No Instructions');
     const model = getModel(inputs);
-    console.log('model:', model.modelId);
+    console.log('Model:', model.modelId);
     if (!model.modelId)
         return setFailed('No Model');
-    const maxTokens = Number.parseInt(inputs.maxTokens) || 1024;
-    console.log('maxTokens:', maxTokens);
+    const maxTokens = Number.parseInt(inputs.maxTokens) || 2048;
+    console.log('Max Tokens:', maxTokens);
     const response = await generateText({
         prompt: body,
         system: instructions.join('\n'),
@@ -70909,9 +70913,10 @@ async function getInstructions(inputs) {
     if (inputs.file) {
         const globber = await create(inputs.file);
         for await (const file of globber.globGenerator()) {
-            console.log('file:', file);
             const text = readFileSync$1(file, 'utf8').trim();
-            console.log('text:', text);
+            startGroup(file);
+            console.log(text);
+            endGroup();
             if (text)
                 results.push(text);
         }

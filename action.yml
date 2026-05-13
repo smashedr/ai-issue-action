@@ -17,7 +17,7 @@ inputs:
     description: "Files Glob Instructions"
   max_tokens:
     description: "Max Output Tokens"
-    default: "1024"
+    default: "2048"
   #number:
   #  description: "Optional Issue Number"
   token:

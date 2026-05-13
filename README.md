@@ -64,7 +64,7 @@ Works with Google Gemini, Anthropic Claude and ChatGPT OpenAI.
 | [model](#model)               | **Yes** |       -        | Model to Use           |
 | [instructions](#instructions) |    -    |       -        | Text Instructions      |
 | [file](#file)                 |    -    |       -        | File Glob Instructions |
-| **max_tokens**                |    -    |     `1024`     | Max Output Tokens      |
+| **max_tokens**                |    -    |     `2048`     | Max Output Tokens      |
 | **token**                     |    -    | `github.token` | Optional GitHub Token  |
 
 To authenticate provide your API key in the applicable environment variable:
