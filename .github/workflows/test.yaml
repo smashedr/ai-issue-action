@@ -82,12 +82,13 @@ jobs:
 
       - name: "Echo Outputs"
         env:
+          text: ${{ steps.test.outputs.text }}
           usage: ${{ steps.test.outputs.usage }}
           comment: ${{ steps.test.outputs.comment }}
         run: |
-          echo "text: ${{ steps.test.outputs.text }}"
-          echo "usage: ${usage}"
-          echo "comment: ${comment}"
+          echo "text: ${text}"
+          echo "${usage}" | jq
+          #echo "${comment}" | jq
 
       #- name: "Validate Outputs"
       #  if: ${{ !github.event.act }}

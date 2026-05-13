@@ -44,7 +44,7 @@ Works with Google Gemini, Anthropic Claude and ChatGPT OpenAI.
   with:
     model: gemini-2.5-flash
     instructions: 'You are an assistant responding to a GitHub Issue with Training Data:'
-    file: .github/instructions/*.md
+    file: docs/**/*.md
 ```
 
 ## Features
@@ -67,17 +67,23 @@ Works with Google Gemini, Anthropic Claude and ChatGPT OpenAI.
 | **max_tokens**                |    -    |     `1024`     | Max Output Tokens      |
 | **token**                     |    -    | `github.token` | Optional GitHub Token  |
 
-Note: The API Key can be provided with the `OPENAI_API_KEY` environment variable or the `token` input.
+To authenticate provide your API key in the applicable environment variable:
 
-You can create and manage an OpenAI API Key here: https://platform.openai.com/api-keys
+- Claude: `ANTHROPIC_API_KEY`
+- Gemini: `GOOGLE_GENERATIVE_AI_API_KEY`
+- OpenAI: `OPENAI_API_KEY`
 
 #### model
-
-More Details: <https://developers.openai.com/api/docs/models/all>
 
 - Claude: https://platform.claude.com/docs/en/about-claude/models/overview
 - Gemini: https://ai.google.dev/gemini-api/docs/models
 - OpenAI: https://developers.openai.com/api/docs/models/compare
+
+Current Model Specific Options:
+
+```text
+providerOptions: { openai: { serviceTier: 'flex', reasoningEffort: 'none' } },
+```
 
 Examples: `claude-haiku-4-5`, `gemini-2.5-flash`, `gpt-5.4-nano`
 
@@ -91,7 +97,7 @@ Example: `You are a helpful assistant responding to a GitHub Issue on training d
 
 File glob of files to read for instructions.
 
-Example: `.github/knowledge/*.md`
+Example: `.github/instructions/*.md`
 
 ## Examples
 
@@ -105,10 +111,9 @@ Basic example using Gemini Flash (works with free tier API key).
   with:
     model: gemini-2.5-flash
     instructions: 'You are an assistant responding to a GitHub Issue with Training Data:'
-    file: .github/instructions/*.md
 ```
 
-Full Workflow.
+With file instructions (you need to check out the files).
 
 ```yaml
 name: 'Issue'
@@ -135,7 +140,62 @@ jobs:
         with:
           model: gemini-2.5-flash
           instructions: 'You are an assistant responding to a GitHub Issue with Training Data:'
-          file: .github/instructions/*.md
+    file: .github/instructions/*.md
+```
+
+Using an App Token.
+
+```yaml
+name: 'Issue'
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  issue:
+    name: 'Issue'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v6
+        with:
+          path: .configs
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            docs/**
+
+      - name: 'Create App Token'
+        if: ${{ !github.event.release.prerelease }}
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: 146360
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: smashedr
+          repositories: test5
+
+      - name: 'AI Issue'
+        id: issue
+        uses: smashedr/ai-issue-action@master
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+        with:
+          model: gemini-2.5-flash
+          instructions: 'You are an assistant responding to a GitHub Issue with Training Data:'
+          file: docs/**/*.md
+          token: ${{ steps.app.outputs.token }}
+
+      - name: 'Output'
+        env:
+          text: ${{ steps.issue.outputs.text }}
+          usage: ${{ steps.issue.outputs.usage }}
+        run: |
+          echo "text: ${text}"
+          echo "${usage}" | jq
 ```
 
 For more examples, you can check out other projects using this action:  
@@ -162,10 +222,11 @@ https://github.com/smashedr/ai-issue-action/network/dependents
 
 - name: 'Echo Outputs'
   env:
+    text: ${{ steps.issue.outputs.text }}
     usage: ${{ steps.issue.outputs.usage }}
     comment: ${{ steps.issue.outputs.comment }}
   run: |
-    echo "text: ${{ steps.issue.outputs.text }}"
+    echo "text: ${text}"
     echo "usage: ${usage}"
     echo "comment: ${comment}"
 ```
