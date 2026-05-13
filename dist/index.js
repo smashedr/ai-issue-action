@@ -29644,185 +29644,186 @@ function withDefaults$2(oldDefaults, newDefaults) {
 // pkg/dist-src/index.js
 var endpoint = withDefaults$2(null, DEFAULTS);
 
-var fastContentTypeParse = {};
+var dist$1 = {};
 
-var hasRequiredFastContentTypeParse;
+var hasRequiredDist$1;
 
-function requireFastContentTypeParse () {
-	if (hasRequiredFastContentTypeParse) return fastContentTypeParse;
-	hasRequiredFastContentTypeParse = 1;
-
-	const NullObject = function NullObject () { };
-	NullObject.prototype = Object.create(null);
-
-	/**
-	 * RegExp to match *( ";" parameter ) in RFC 7231 sec 3.1.1.1
-	 *
-	 * parameter     = token "=" ( token / quoted-string )
-	 * token         = 1*tchar
-	 * tchar         = "!" / "#" / "$" / "%" / "&" / "'" / "*"
-	 *               / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
-	 *               / DIGIT / ALPHA
-	 *               ; any VCHAR, except delimiters
-	 * quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
-	 * qdtext        = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
-	 * obs-text      = %x80-FF
-	 * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
+function requireDist$1 () {
+	if (hasRequiredDist$1) return dist$1;
+	hasRequiredDist$1 = 1;
+	/*!
+	 * content-type
+	 * Copyright(c) 2015 Douglas Christopher Wilson
+	 * MIT Licensed
 	 */
-	const paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\v\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */gu;
-
+	Object.defineProperty(dist$1, "__esModule", { value: true });
+	dist$1.format = format;
+	dist$1.parse = parse;
+	const TEXT_REGEXP = /^[\u0009\u0020-\u007e\u0080-\u00ff]*$/;
+	const TOKEN_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 	/**
-	 * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
-	 *
-	 * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
-	 * obs-text    = %x80-FF
+	 * RegExp to match chars that must be quoted-pair in RFC 9110 sec 5.6.4
 	 */
-	const quotedPairRE = /\\([\v\u0020-\u00ff])/gu;
-
+	const QUOTE_REGEXP = /[\\"]/g;
 	/**
-	 * RegExp to match type in RFC 7231 sec 3.1.1.1
+	 * RegExp to match type in RFC 9110 sec 8.3.1
 	 *
 	 * media-type = type "/" subtype
 	 * type       = token
 	 * subtype    = token
 	 */
-	const mediaTypeRE = /^[!#$%&'*+.^\w|~-]+\/[!#$%&'*+.^\w|~-]+$/u;
-
-	// default ContentType to prevent repeated object creation
-	const defaultContentType = { type: '', parameters: new NullObject() };
-	Object.freeze(defaultContentType.parameters);
-	Object.freeze(defaultContentType);
-
+	const TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 	/**
-	 * Parse media type to object.
-	 *
-	 * @param {string|object} header
-	 * @return {Object}
-	 * @public
+	 * Null object perf optimization. Faster than `Object.create(null)` and `{ __proto__: null }`.
 	 */
-
-	function parse (header) {
-	  if (typeof header !== 'string') {
-	    throw new TypeError('argument header is required and must be a string')
-	  }
-
-	  let index = header.indexOf(';');
-	  const type = index !== -1
-	    ? header.slice(0, index).trim()
-	    : header.trim();
-
-	  if (mediaTypeRE.test(type) === false) {
-	    throw new TypeError('invalid media type')
-	  }
-
-	  const result = {
-	    type: type.toLowerCase(),
-	    parameters: new NullObject()
-	  };
-
-	  // parse parameters
-	  if (index === -1) {
-	    return result
-	  }
-
-	  let key;
-	  let match;
-	  let value;
-
-	  paramRE.lastIndex = index;
-
-	  while ((match = paramRE.exec(header))) {
-	    if (match.index !== index) {
-	      throw new TypeError('invalid parameter format')
+	const NullObject = /* @__PURE__ */ (() => {
+	    const C = function () { };
+	    C.prototype = Object.create(null);
+	    return C;
+	})();
+	/**
+	 * Format an object into a `Content-Type` header.
+	 */
+	function format(obj) {
+	    const { type, parameters } = obj;
+	    if (!type || !TYPE_REGEXP.test(type)) {
+	        throw new TypeError(`Invalid type: ${type}`);
 	    }
-
-	    index += match[0].length;
-	    key = match[1].toLowerCase();
-	    value = match[2];
-
-	    if (value[0] === '"') {
-	      // remove quotes and escapes
-	      value = value
-	        .slice(1, value.length - 1);
-
-	      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'));
+	    let result = type;
+	    if (parameters) {
+	        for (const param of Object.keys(parameters)) {
+	            if (!TOKEN_REGEXP.test(param)) {
+	                throw new TypeError(`Invalid parameter name: ${param}`);
+	            }
+	            result += `; ${param}=${qstring(parameters[param])}`;
+	        }
 	    }
-
-	    result.parameters[key] = value;
-	  }
-
-	  if (index !== header.length) {
-	    throw new TypeError('invalid parameter format')
-	  }
-
-	  return result
+	    return result;
 	}
-
-	function safeParse (header) {
-	  if (typeof header !== 'string') {
-	    return defaultContentType
-	  }
-
-	  let index = header.indexOf(';');
-	  const type = index !== -1
-	    ? header.slice(0, index).trim()
-	    : header.trim();
-
-	  if (mediaTypeRE.test(type) === false) {
-	    return defaultContentType
-	  }
-
-	  const result = {
-	    type: type.toLowerCase(),
-	    parameters: new NullObject()
-	  };
-
-	  // parse parameters
-	  if (index === -1) {
-	    return result
-	  }
-
-	  let key;
-	  let match;
-	  let value;
-
-	  paramRE.lastIndex = index;
-
-	  while ((match = paramRE.exec(header))) {
-	    if (match.index !== index) {
-	      return defaultContentType
-	    }
-
-	    index += match[0].length;
-	    key = match[1].toLowerCase();
-	    value = match[2];
-
-	    if (value[0] === '"') {
-	      // remove quotes and escapes
-	      value = value
-	        .slice(1, value.length - 1);
-
-	      quotedPairRE.test(value) && (value = value.replace(quotedPairRE, '$1'));
-	    }
-
-	    result.parameters[key] = value;
-	  }
-
-	  if (index !== header.length) {
-	    return defaultContentType
-	  }
-
-	  return result
+	/**
+	 * Parse a `Content-Type` header.
+	 */
+	function parse(header, options) {
+	    const len = header.length;
+	    let index = skipOWS(header, 0, len);
+	    const valueStart = index;
+	    index = skipValue(header, index, len);
+	    const valueEnd = trailingOWS(header, valueStart, index);
+	    const type = header.slice(valueStart, valueEnd).toLowerCase();
+	    const parameters = options?.parameters === false
+	        ? new NullObject()
+	        : parseParameters(header, index, len);
+	    return { type, parameters };
 	}
-
-	fastContentTypeParse.default = { parse, safeParse };
-	fastContentTypeParse.parse = parse;
-	fastContentTypeParse.safeParse = safeParse;
-	fastContentTypeParse.defaultContentType = defaultContentType;
-	return fastContentTypeParse;
+	const SP = 32; // " "
+	const HTAB = 9; // "\t"
+	const SEMI = 59; // ";"
+	const EQ = 61; // "="
+	const DQUOTE = 34; // '"'
+	const BSLASH = 92; // "\\"
+	/**
+	 * Parses the parameters of a `Content-Type` header starting at the given index.
+	 */
+	function parseParameters(header, index, len) {
+	    const parameters = new NullObject();
+	    parameter: while (index < len) {
+	        index = skipOWS(header, index + 1 /* Skip over ; */, len);
+	        const keyStart = index;
+	        while (index < len) {
+	            const code = header.charCodeAt(index);
+	            if (code === SEMI)
+	                continue parameter;
+	            if (code === EQ) {
+	                const keyEnd = trailingOWS(header, keyStart, index);
+	                const key = header.slice(keyStart, keyEnd).toLowerCase();
+	                index = skipOWS(header, index + 1, len);
+	                if (index < len && header.charCodeAt(index) === DQUOTE) {
+	                    index++;
+	                    let value = "";
+	                    while (index < len) {
+	                        const code = header.charCodeAt(index++);
+	                        if (code === DQUOTE) {
+	                            index = skipValue(header, index, len);
+	                            if (parameters[key] === undefined)
+	                                parameters[key] = value;
+	                            break;
+	                        }
+	                        if (code === BSLASH && index < len) {
+	                            value += header[index++];
+	                            continue;
+	                        }
+	                        value += String.fromCharCode(code);
+	                    }
+	                    continue parameter;
+	                }
+	                const valueStart = index;
+	                index = skipValue(header, index, len);
+	                if (parameters[key] === undefined) {
+	                    const valueEnd = trailingOWS(header, valueStart, index);
+	                    parameters[key] = header.slice(valueStart, valueEnd);
+	                }
+	                continue parameter;
+	            }
+	            index++;
+	        }
+	    }
+	    return parameters;
+	}
+	/**
+	 * Skip over characters until a semicolon.
+	 */
+	function skipValue(str, index, len) {
+	    while (index < len) {
+	        const char = str.charCodeAt(index);
+	        if (char === SEMI)
+	            break;
+	        index++;
+	    }
+	    return index;
+	}
+	/**
+	 * Skip optional whitespace (OWS) in an HTTP header value.
+	 *
+	 * OWS is defined in RFC 9110 sec 5.6.3 as SP (" ") or HTAB ("\t").
+	 */
+	function skipOWS(header, index, len) {
+	    while (index < len) {
+	        const char = header.charCodeAt(index);
+	        if (char !== SP && char !== HTAB)
+	            break;
+	        index++;
+	    }
+	    return index;
+	}
+	/**
+	 * Trim optional whitespace (OWS) from the end of a substring.
+	 *
+	 * OWS is defined in RFC 9110 sec 5.6.3 as SP (" ") or HTAB ("\t").
+	 */
+	function trailingOWS(header, start, end) {
+	    while (end > start) {
+	        const char = header.charCodeAt(end - 1);
+	        if (char !== SP && char !== HTAB)
+	            break;
+	        end--;
+	    }
+	    return end;
+	}
+	/**
+	 * Serialize a parameter value.
+	 */
+	function qstring(str) {
+	    if (TOKEN_REGEXP.test(str))
+	        return str;
+	    if (TEXT_REGEXP.test(str))
+	        return `"${str.replace(QUOTE_REGEXP, "\\$&")}"`;
+	    throw new TypeError(`Invalid parameter value: ${str}`);
+	}
+	
+	return dist$1;
 }
 
-var fastContentTypeParseExports = requireFastContentTypeParse();
+var distExports$1 = requireDist$1();
 
 const intRegex = /^-?\d+$/;
 const noiseValue = /^-?\d+n+$/; // Noise - strings that match the custom format before being converted to it
@@ -30072,7 +30073,7 @@ class RequestError extends Error {
 // pkg/dist-src/index.js
 
 // pkg/dist-src/version.js
-var VERSION$b = "10.0.8";
+var VERSION$b = "10.0.9";
 
 // pkg/dist-src/defaults.js
 var defaults_default = {
@@ -30194,7 +30195,7 @@ async function getResponseData(response) {
   if (!contentType) {
     return response.text().catch(noop$2);
   }
-  const mimetype = fastContentTypeParseExports.safeParse(contentType);
+  const mimetype = distExports$1.parse(contentType);
   if (isJSONResponse(mimetype)) {
     let text = "";
     try {
@@ -50619,7 +50620,7 @@ var anthropic = createAnthropic();
 // src/google-provider.ts
 
 // src/version.ts
-var VERSION$4 = "3.0.72" ;
+var VERSION$4 = "3.0.73" ;
 var googleErrorDataSchema = lazySchema(
   () => zodSchema(
     object$1({
@@ -50641,6 +50642,12 @@ var googleEmbeddingContentPartSchema = union([
     inlineData: object$1({
       mimeType: string(),
       data: string()
+    })
+  }),
+  object$1({
+    fileData: object$1({
+      fileUri: string(),
+      mimeType: string()
     })
   })
 ]);
@@ -63511,13 +63518,19 @@ var GatewayError = class _GatewayError extends (_b = Error, _a$1 = symbol$1, _b)
     message,
     statusCode = 500,
     cause,
-    generationId
+    generationId,
+    isRetryable = statusCode != null && (statusCode === 408 || // request timeout
+    statusCode === 409 || // conflict
+    statusCode === 429 || // too many requests
+    statusCode >= 500)
+    // server error
   }) {
     super(generationId ? `${message} [${generationId}]` : message);
     this[_a$1] = true;
     this.statusCode = statusCode;
     this.cause = cause;
     this.generationId = generationId;
+    this.isRetryable = isRetryable;
   }
   /**
    * Checks if the given error is a Gateway Error.
@@ -65025,7 +65038,7 @@ async function getVercelRequestId() {
 }
 
 // src/version.ts
-var VERSION$2 = "3.0.112" ;
+var VERSION$2 = "3.0.114" ;
 
 // src/gateway-provider.ts
 var AI_GATEWAY_PROTOCOL_VERSION = "0.0.1";
@@ -67161,7 +67174,7 @@ function detectMediaType({
 }
 
 // src/version.ts
-var VERSION = "6.0.178" ;
+var VERSION = "6.0.182" ;
 
 // src/util/download/download.ts
 var download = async ({
@@ -67474,7 +67487,10 @@ function convertToLanguageModelMessage({
                 type: "tool-result",
                 toolCallId: part.toolCallId,
                 toolName: part.toolName,
-                output: mapToolResultOutput(part.output),
+                output: mapToolResultOutput({
+                  output: part.output,
+                  downloadedAssets
+                }),
                 providerOptions
               };
             }
@@ -67496,7 +67512,10 @@ function convertToLanguageModelMessage({
                 type: "tool-result",
                 toolCallId: part.toolCallId,
                 toolName: part.toolName,
-                output: mapToolResultOutput(part.output),
+                output: mapToolResultOutput({
+                  output: part.output,
+                  downloadedAssets
+                }),
                 providerOptions: part.providerOptions
               };
             }
@@ -67520,20 +67539,44 @@ function convertToLanguageModelMessage({
   }
 }
 async function downloadAssets(messages, download2, supportedUrls) {
-  const plannedDownloads = messages.filter((message) => message.role === "user").map((message) => message.content).filter(
-    (content) => Array.isArray(content)
-  ).flat().filter(
-    (part) => part.type === "image" || part.type === "file"
-  ).map((part) => {
-    var _a21;
-    const mediaType = (_a21 = part.mediaType) != null ? _a21 : part.type === "image" ? "image/*" : void 0;
-    let data = part.type === "image" ? part.image : part.data;
-    if (typeof data === "string") {
-      try {
-        data = new URL(data);
-      } catch (ignored) {
+  var _a21;
+  const downloadableFiles = [];
+  for (const message of messages) {
+    if (message.role === "user" && Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part.type === "image" || part.type === "file") {
+          downloadableFiles.push({
+            data: part.type === "image" ? part.image : part.data,
+            mediaType: (_a21 = part.mediaType) != null ? _a21 : part.type === "image" ? "image/*" : void 0
+          });
+        }
       }
     }
+    if (message.role === "tool" || message.role === "assistant") {
+      if (!Array.isArray(message.content)) {
+        continue;
+      }
+      for (const part of message.content) {
+        if (part.type !== "tool-result") {
+          continue;
+        }
+        if (part.output.type !== "content") {
+          continue;
+        }
+        for (const contentPart of part.output.value) {
+          if (contentPart.type === "image-url" || contentPart.type === "file-url") {
+            downloadableFiles.push({
+              data: new URL(contentPart.url),
+              mediaType: contentPart.type === "image-url" ? "image/*" : void 0
+            });
+          }
+        }
+      }
+    }
+  }
+  const plannedDownloads = downloadableFiles.map((part) => {
+    const mediaType = part.mediaType;
+    const { data } = convertToLanguageModelV3DataContent(part.data);
     return { mediaType, data };
   }).filter(
     (part) => part.data instanceof URL
@@ -67614,13 +67657,41 @@ function convertPartToLanguageModelPart(part, downloadedAssets) {
     }
   }
 }
-function mapToolResultOutput(output) {
+function mapToolResultOutput({
+  output,
+  downloadedAssets
+}) {
   if (output.type !== "content") {
     return output;
   }
   return {
     type: "content",
     value: output.value.map((item) => {
+      var _a21, _b;
+      if (item.type === "image-url") {
+        const downloadedFile = downloadedAssets[new URL(item.url).toString()];
+        if (downloadedFile) {
+          return {
+            type: "image-data",
+            data: convertDataContentToBase64String(downloadedFile.data),
+            mediaType: (_a21 = downloadedFile.mediaType) != null ? _a21 : "image/*",
+            providerOptions: item.providerOptions
+          };
+        }
+        return item;
+      }
+      if (item.type === "file-url") {
+        const downloadedFile = downloadedAssets[new URL(item.url).toString()];
+        if (downloadedFile) {
+          return {
+            type: "file-data",
+            data: convertDataContentToBase64String(downloadedFile.data),
+            mediaType: (_b = downloadedFile.mediaType) != null ? _b : "application/octet-stream",
+            providerOptions: item.providerOptions
+          };
+        }
+        return item;
+      }
       if (item.type !== "media") {
         return item;
       }
@@ -68467,7 +68538,7 @@ function getRetryDelayInMs({
   error,
   exponentialBackoffDelay
 }) {
-  const headers = error.responseHeaders;
+  const headers = APICallError.isInstance(error) ? error.responseHeaders : APICallError.isInstance(error.cause) ? error.cause.responseHeaders : void 0;
   if (!headers)
     return exponentialBackoffDelay;
   let ms;
@@ -68528,7 +68599,7 @@ async function _retryWithExponentialBackoff(f, {
         errors: newErrors
       });
     }
-    if (error instanceof Error && APICallError.isInstance(error) && error.isRetryable === true && tryNumber <= maxRetries) {
+    if (error instanceof Error && (APICallError.isInstance(error) && error.isRetryable === true || GatewayError.isInstance(error) && error.isRetryable === true) && tryNumber <= maxRetries) {
       await delay(
         getRetryDelayInMs({
           error,
@@ -70825,6 +70896,8 @@ const inputs = {
     instructions: getInput('instructions'),
     file: getInput('file'),
     maxTokens: getInput('max_tokens'),
+    head: getInput('head'),
+    tail: getInput('tail'),
     token: getInput('token', { required: true }),
 };
 async function main() {
@@ -70866,7 +70939,7 @@ async function main() {
     console.log('Max Tokens:', maxTokens);
     const response = await generateText({
         prompt: body,
-        system: instructions.join('\n'),
+        system: instructions.join('\n\n'),
         model: model,
         maxOutputTokens: maxTokens,
         providerOptions: { openai: { serviceTier: 'flex', reasoningEffort: 'none' } },
@@ -70880,11 +70953,15 @@ async function main() {
     startGroup('text');
     console.log(response.text);
     endGroup();
+    const result = [inputs.head, response.text, inputs.tail].filter(Boolean).join('\n\n');
+    startGroup('result');
+    console.log(result);
+    endGroup();
     const octokit = getOctokit(inputs.token);
     const comment = await octokit.rest.issues.createComment({
         ...context$1.repo,
         issue_number: issue.number,
-        body: response.text,
+        body: result,
     });
     startGroup('comment');
     console.log(comment);
