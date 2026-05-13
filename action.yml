@@ -18,6 +18,10 @@ inputs:
   max_tokens:
     description: "Max Output Tokens"
     default: "2048"
+  head:
+    description: "Head Text to Prepend to the Reply"
+  tail:
+    description: "Tail Text to Append to the Reply"
   #number:
   #  description: "Optional Issue Number"
   token:
