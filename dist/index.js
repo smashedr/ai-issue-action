@@ -35,6 +35,7 @@ import 'child_process';
 import 'timers';
 import 'stream';
 import { readFileSync as readFileSync$1 } from 'node:fs';
+import { relative } from 'node:path';
 
 function _mergeNamespaces(n, m) {
     m.forEach(function (e) {
@@ -45014,7 +45015,7 @@ async function* executeTool({
 // src/anthropic-provider.ts
 
 // src/version.ts
-var VERSION$5 = "3.0.77" ;
+var VERSION$5 = "3.0.78" ;
 var anthropicErrorDataSchema = lazySchema(
   () => zodSchema(
     object$1({
@@ -47080,7 +47081,7 @@ async function convertToAnthropicMessagesPrompt({
   cacheControlValidator,
   toolNameMapping
 }) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
   const betas = /* @__PURE__ */ new Set();
   const blocks = groupIntoBlocks(prompt);
   const validator = cacheControlValidator || new CacheControlValidator();
@@ -47232,15 +47233,21 @@ async function convertToAnthropicMessagesPrompt({
                 if (part.type === "tool-approval-response") {
                   continue;
                 }
+                const output = part.output;
+                const outputProviderOptions = "providerOptions" in output ? output.providerOptions : output.type === "content" ? (_d = output.value.find(
+                  (contentPart) => contentPart.providerOptions != null
+                )) == null ? void 0 : _d.providerOptions : void 0;
                 const isLastPart = i2 === content.length - 1;
-                const cacheControl = (_d = validator.getCacheControl(part.providerOptions, {
+                const cacheControl = (_f = (_e = validator.getCacheControl(part.providerOptions, {
                   type: "tool result part",
                   canCache: true
-                })) != null ? _d : isLastPart ? validator.getCacheControl(message.providerOptions, {
+                })) != null ? _e : validator.getCacheControl(outputProviderOptions, {
+                  type: "tool result output",
+                  canCache: true
+                })) != null ? _f : isLastPart ? validator.getCacheControl(message.providerOptions, {
                   type: "tool result message",
                   canCache: true
                 }) : void 0;
-                const output = part.output;
                 let contentValue;
                 switch (output.type) {
                   case "content":
@@ -47327,7 +47334,7 @@ async function convertToAnthropicMessagesPrompt({
                     contentValue = output.value;
                     break;
                   case "execution-denied":
-                    contentValue = (_e = output.reason) != null ? _e : "Tool execution denied.";
+                    contentValue = (_g = output.reason) != null ? _g : "Tool execution denied.";
                     break;
                   case "json":
                   case "error-json":
@@ -47364,16 +47371,16 @@ async function convertToAnthropicMessagesPrompt({
           for (let k = 0; k < content.length; k++) {
             const part = content[k];
             const isLastContentPart = k === content.length - 1;
-            const cacheControl = (_f = validator.getCacheControl(part.providerOptions, {
+            const cacheControl = (_h = validator.getCacheControl(part.providerOptions, {
               type: "assistant message part",
               canCache: true
-            })) != null ? _f : isLastContentPart ? validator.getCacheControl(message.providerOptions, {
+            })) != null ? _h : isLastContentPart ? validator.getCacheControl(message.providerOptions, {
               type: "assistant message",
               canCache: true
             }) : void 0;
             switch (part.type) {
               case "text": {
-                const textMetadata = (_g = part.providerOptions) == null ? void 0 : _g.anthropic;
+                const textMetadata = (_i = part.providerOptions) == null ? void 0 : _i.anthropic;
                 if ((textMetadata == null ? void 0 : textMetadata.type) === "compaction") {
                   anthropicContent.push({
                     type: "compaction",
@@ -47446,10 +47453,10 @@ async function convertToAnthropicMessagesPrompt({
                   const providerToolName = toolNameMapping.toProviderToolName(
                     part.toolName
                   );
-                  const isMcpToolUse = ((_i = (_h = part.providerOptions) == null ? void 0 : _h.anthropic) == null ? void 0 : _i.type) === "mcp-tool-use";
+                  const isMcpToolUse = ((_k = (_j = part.providerOptions) == null ? void 0 : _j.anthropic) == null ? void 0 : _k.type) === "mcp-tool-use";
                   if (isMcpToolUse) {
                     mcpToolUseIds.add(part.toolCallId);
-                    const serverName = (_k = (_j = part.providerOptions) == null ? void 0 : _j.anthropic) == null ? void 0 : _k.serverName;
+                    const serverName = (_m = (_l = part.providerOptions) == null ? void 0 : _l.anthropic) == null ? void 0 : _m.serverName;
                     if (serverName == null || typeof serverName !== "string") {
                       warnings.push({
                         type: "other",
@@ -47525,7 +47532,7 @@ async function convertToAnthropicMessagesPrompt({
                   }
                   break;
                 }
-                const callerOptions = (_l = part.providerOptions) == null ? void 0 : _l.anthropic;
+                const callerOptions = (_n = part.providerOptions) == null ? void 0 : _n.anthropic;
                 const caller = (callerOptions == null ? void 0 : callerOptions.caller) ? (callerOptions.caller.type === "code_execution_20250825" || callerOptions.caller.type === "code_execution_20260120") && callerOptions.caller.toolId ? {
                   type: callerOptions.caller.type,
                   tool_id: callerOptions.caller.toolId
@@ -47578,7 +47585,7 @@ async function convertToAnthropicMessagesPrompt({
                         tool_use_id: part.toolCallId,
                         content: {
                           type: "code_execution_tool_result_error",
-                          error_code: (_m = errorInfo.errorCode) != null ? _m : "unknown"
+                          error_code: (_o = errorInfo.errorCode) != null ? _o : "unknown"
                         },
                         cache_control: cacheControl
                       });
@@ -47589,7 +47596,7 @@ async function convertToAnthropicMessagesPrompt({
                         cache_control: cacheControl,
                         content: {
                           type: "bash_code_execution_tool_result_error",
-                          error_code: (_n = errorInfo.errorCode) != null ? _n : "unknown"
+                          error_code: (_p = errorInfo.errorCode) != null ? _p : "unknown"
                         }
                       });
                     }
@@ -47622,7 +47629,7 @@ async function convertToAnthropicMessagesPrompt({
                         stdout: codeExecutionOutput.stdout,
                         stderr: codeExecutionOutput.stderr,
                         return_code: codeExecutionOutput.return_code,
-                        content: (_o = codeExecutionOutput.content) != null ? _o : []
+                        content: (_q = codeExecutionOutput.content) != null ? _q : []
                       },
                       cache_control: cacheControl
                     });
@@ -47640,7 +47647,7 @@ async function convertToAnthropicMessagesPrompt({
                           encrypted_stdout: codeExecutionOutput.encrypted_stdout,
                           stderr: codeExecutionOutput.stderr,
                           return_code: codeExecutionOutput.return_code,
-                          content: (_p = codeExecutionOutput.content) != null ? _p : []
+                          content: (_r = codeExecutionOutput.content) != null ? _r : []
                         },
                         cache_control: cacheControl
                       });
@@ -47659,7 +47666,7 @@ async function convertToAnthropicMessagesPrompt({
                           stdout: codeExecutionOutput.stdout,
                           stderr: codeExecutionOutput.stderr,
                           return_code: codeExecutionOutput.return_code,
-                          content: (_q = codeExecutionOutput.content) != null ? _q : []
+                          content: (_s = codeExecutionOutput.content) != null ? _s : []
                         },
                         cache_control: cacheControl
                       });
@@ -47692,7 +47699,7 @@ async function convertToAnthropicMessagesPrompt({
                         errorValue = output.value;
                       }
                     } catch (e) {
-                      const extractedErrorCode = (_r = output.value) == null ? void 0 : _r.errorCode;
+                      const extractedErrorCode = (_t = output.value) == null ? void 0 : _t.errorCode;
                       errorValue = {
                         errorCode: typeof extractedErrorCode === "string" ? extractedErrorCode : "unavailable"
                       };
@@ -47702,7 +47709,7 @@ async function convertToAnthropicMessagesPrompt({
                       tool_use_id: part.toolCallId,
                       content: {
                         type: "web_fetch_tool_result_error",
-                        error_code: (_s = errorValue.errorCode) != null ? _s : "unavailable"
+                        error_code: (_u = errorValue.errorCode) != null ? _u : "unavailable"
                       },
                       cache_control: cacheControl
                     });
@@ -50620,7 +50627,7 @@ var anthropic = createAnthropic();
 // src/google-provider.ts
 
 // src/version.ts
-var VERSION$4 = "3.0.73" ;
+var VERSION$4 = "3.0.74" ;
 var googleErrorDataSchema = lazySchema(
   () => zodSchema(
     object$1({
@@ -50998,7 +51005,7 @@ function convertUrlToolResultPart(url) {
     }
   };
 }
-function appendToolResultParts(parts, toolName, outputValue) {
+function appendToolResultParts(parts, toolName, outputValue, toolCallId) {
   const functionResponseParts = [];
   const responseTextParts = [];
   for (const contentPart of outputValue) {
@@ -51037,6 +51044,7 @@ function appendToolResultParts(parts, toolName, outputValue) {
   }
   parts.push({
     functionResponse: {
+      ...toolCallId != null ? { id: toolCallId } : {},
       name: toolName,
       response: {
         name: toolName,
@@ -51046,12 +51054,13 @@ function appendToolResultParts(parts, toolName, outputValue) {
     }
   });
 }
-function appendLegacyToolResultParts(parts, toolName, outputValue) {
+function appendLegacyToolResultParts(parts, toolName, outputValue, toolCallId) {
   for (const contentPart of outputValue) {
     switch (contentPart.type) {
       case "text":
         parts.push({
           functionResponse: {
+            ...toolCallId != null ? { id: toolCallId } : {},
             name: toolName,
             response: {
               name: toolName,
@@ -51181,6 +51190,7 @@ function convertToGoogleGenerativeAIMessages(prompt, options) {
                 }
                 return {
                   functionCall: {
+                    ...part.toolCallId != null ? { id: part.toolCallId } : {},
                     name: part.toolName,
                     args: part.input
                   },
@@ -51237,13 +51247,24 @@ function convertToGoogleGenerativeAIMessages(prompt, options) {
           const output = part.output;
           if (output.type === "content") {
             if (supportsFunctionResponseParts) {
-              appendToolResultParts(parts, part.toolName, output.value);
+              appendToolResultParts(
+                parts,
+                part.toolName,
+                output.value,
+                part.toolCallId
+              );
             } else {
-              appendLegacyToolResultParts(parts, part.toolName, output.value);
+              appendLegacyToolResultParts(
+                parts,
+                part.toolName,
+                output.value,
+                part.toolCallId
+              );
             }
           } else {
             parts.push({
               functionResponse: {
+                ...part.toolCallId != null ? { id: part.toolCallId } : {},
                 name: part.toolName,
                 response: {
                   name: part.toolName,
@@ -52056,7 +52077,7 @@ var GoogleGenerativeAILanguageModel = class {
     };
   }
   async doGenerate(options) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
     const { args, warnings, providerOptionsName } = await this.getArgs(options);
     const mergedHeaders = combineHeaders(
       await resolve(this.config.headers),
@@ -52127,9 +52148,9 @@ var GoogleGenerativeAILanguageModel = class {
       } else if ("functionCall" in part && part.functionCall.name != null) {
         content.push({
           type: "tool-call",
-          toolCallId: this.config.generateId(),
+          toolCallId: (_e = part.functionCall.id) != null ? _e : this.config.generateId(),
           toolName: part.functionCall.name,
-          input: JSON.stringify((_e = part.functionCall.args) != null ? _e : {}),
+          input: JSON.stringify((_f = part.functionCall.args) != null ? _f : {}),
           providerMetadata: part.thoughtSignature ? {
             [providerOptionsName]: {
               thoughtSignature: part.thoughtSignature
@@ -52151,13 +52172,13 @@ var GoogleGenerativeAILanguageModel = class {
           } : void 0
         });
       } else if ("toolCall" in part && part.toolCall) {
-        const toolCallId = (_f = part.toolCall.id) != null ? _f : this.config.generateId();
+        const toolCallId = (_g = part.toolCall.id) != null ? _g : this.config.generateId();
         lastServerToolCallId = toolCallId;
         content.push({
           type: "tool-call",
           toolCallId,
           toolName: `server:${part.toolCall.toolType}`,
-          input: JSON.stringify((_g = part.toolCall.args) != null ? _g : {}),
+          input: JSON.stringify((_h = part.toolCall.args) != null ? _h : {}),
           providerExecuted: true,
           dynamic: true,
           providerMetadata: part.thoughtSignature ? {
@@ -52174,12 +52195,12 @@ var GoogleGenerativeAILanguageModel = class {
           }
         });
       } else if ("toolResponse" in part && part.toolResponse) {
-        const responseToolCallId = (_h = lastServerToolCallId != null ? lastServerToolCallId : part.toolResponse.id) != null ? _h : this.config.generateId();
+        const responseToolCallId = (_i = lastServerToolCallId != null ? lastServerToolCallId : part.toolResponse.id) != null ? _i : this.config.generateId();
         content.push({
           type: "tool-result",
           toolCallId: responseToolCallId,
           toolName: `server:${part.toolResponse.toolType}`,
-          result: (_i = part.toolResponse.response) != null ? _i : {},
+          result: (_j = part.toolResponse.response) != null ? _j : {},
           providerMetadata: part.thoughtSignature ? {
             [providerOptionsName]: {
               thoughtSignature: part.thoughtSignature,
@@ -52196,10 +52217,10 @@ var GoogleGenerativeAILanguageModel = class {
         lastServerToolCallId = void 0;
       }
     }
-    const sources = (_j = extractSources({
+    const sources = (_k = extractSources({
       groundingMetadata: candidate.groundingMetadata,
       generateId: this.config.generateId
-    })) != null ? _j : [];
+    })) != null ? _k : [];
     for (const source of sources) {
       content.push(source);
     }
@@ -52213,19 +52234,19 @@ var GoogleGenerativeAILanguageModel = class {
             (part) => part.type === "tool-call" && !part.providerExecuted
           )
         }),
-        raw: (_k = candidate.finishReason) != null ? _k : void 0
+        raw: (_l = candidate.finishReason) != null ? _l : void 0
       },
       usage: convertGoogleGenerativeAIUsage(usageMetadata),
       warnings,
       providerMetadata: {
         [providerOptionsName]: {
-          promptFeedback: (_l = response.promptFeedback) != null ? _l : null,
-          groundingMetadata: (_m = candidate.groundingMetadata) != null ? _m : null,
-          urlContextMetadata: (_n = candidate.urlContextMetadata) != null ? _n : null,
-          safetyRatings: (_o = candidate.safetyRatings) != null ? _o : null,
+          promptFeedback: (_m = response.promptFeedback) != null ? _m : null,
+          groundingMetadata: (_n = candidate.groundingMetadata) != null ? _n : null,
+          urlContextMetadata: (_o = candidate.urlContextMetadata) != null ? _o : null,
+          safetyRatings: (_p = candidate.safetyRatings) != null ? _p : null,
           usageMetadata: usageMetadata != null ? usageMetadata : null,
-          finishMessage: (_p = candidate.finishMessage) != null ? _p : null,
-          serviceTier: (_q = response.serviceTier) != null ? _q : null
+          finishMessage: (_q = candidate.finishMessage) != null ? _q : null,
+          serviceTier: (_r = response.serviceTier) != null ? _r : null
         }
       },
       request: { body: args },
@@ -52281,7 +52302,7 @@ var GoogleGenerativeAILanguageModel = class {
             controller.enqueue({ type: "stream-start", warnings });
           },
           transform(chunk, controller) {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
             if (options.includeRawChunks) {
               controller.enqueue({ type: "raw", rawValue: chunk.rawValue });
             }
@@ -52487,7 +52508,7 @@ var GoogleGenerativeAILanguageModel = class {
                 const isNoArgsCompleteCall = part.functionCall.name != null && part.functionCall.args == null && part.functionCall.partialArgs == null && part.functionCall.willContinue !== true;
                 if (isStreamingChunk) {
                   if (part.functionCall.name != null && part.functionCall.willContinue === true) {
-                    const toolCallId = generateId3();
+                    const toolCallId = (_i = part.functionCall.id) != null ? _i : generateId3();
                     const accumulator = new GoogleJSONAccumulator();
                     activeStreamingToolCalls.push({
                       toolCallId,
@@ -52553,9 +52574,9 @@ var GoogleGenerativeAILanguageModel = class {
                   });
                   hasToolCalls = true;
                 } else if (isCompleteCall) {
-                  const toolCallId = generateId3();
+                  const toolCallId = (_j = part.functionCall.id) != null ? _j : generateId3();
                   const toolName = part.functionCall.name;
-                  const args2 = typeof part.functionCall.args === "string" ? part.functionCall.args : JSON.stringify((_i = part.functionCall.args) != null ? _i : {});
+                  const args2 = typeof part.functionCall.args === "string" ? part.functionCall.args : JSON.stringify((_k = part.functionCall.args) != null ? _k : {});
                   controller.enqueue({
                     type: "tool-input-start",
                     id: toolCallId,
@@ -52582,7 +52603,7 @@ var GoogleGenerativeAILanguageModel = class {
                   });
                   hasToolCalls = true;
                 } else if (isNoArgsCompleteCall) {
-                  const toolCallId = generateId3();
+                  const toolCallId = (_l = part.functionCall.id) != null ? _l : generateId3();
                   const toolName = part.functionCall.name;
                   controller.enqueue({
                     type: "tool-input-start",
@@ -52616,12 +52637,12 @@ var GoogleGenerativeAILanguageModel = class {
               };
               providerMetadata = {
                 [providerOptionsName]: {
-                  promptFeedback: (_j = value.promptFeedback) != null ? _j : null,
+                  promptFeedback: (_m = value.promptFeedback) != null ? _m : null,
                   groundingMetadata: lastGroundingMetadata,
                   urlContextMetadata: lastUrlContextMetadata,
-                  safetyRatings: (_k = candidate.safetyRatings) != null ? _k : null,
+                  safetyRatings: (_n = candidate.safetyRatings) != null ? _n : null,
                   usageMetadata: usageMetadata != null ? usageMetadata : null,
-                  finishMessage: (_l = candidate.finishMessage) != null ? _l : null,
+                  finishMessage: (_o = candidate.finishMessage) != null ? _o : null,
                   serviceTier
                 }
               };
@@ -52811,6 +52832,7 @@ var getContentSchema = () => object$1({
       // note: order matters since text can be fully empty
       object$1({
         functionCall: object$1({
+          id: string().nullish(),
           name: string().nullish(),
           args: unknown().nullish(),
           partialArgs: array$1(partialArgSchema).nullish(),
@@ -58756,6 +58778,7 @@ async function convertToOpenAIResponsesInput({
   systemMessageMode,
   providerOptionsName,
   fileIdPrefixes,
+  passThroughUnsupportedFiles = false,
   store,
   hasConversation = false,
   hasLocalShellTool = false,
@@ -58805,8 +58828,8 @@ async function convertToOpenAIResponsesInput({
                 return { type: "input_text", text: part.text };
               }
               case "file": {
-                if (part.mediaType.startsWith("image/")) {
-                  const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType;
+                const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType;
+                if (mediaType.startsWith("image/")) {
                   return {
                     type: "input_image",
                     ...part.data instanceof URL ? { image_url: part.data.toString() } : typeof part.data === "string" && isFileId(part.data, fileIdPrefixes) ? { file_id: part.data } : {
@@ -58814,25 +58837,25 @@ async function convertToOpenAIResponsesInput({
                     },
                     detail: (_b2 = (_a2 = part.providerOptions) == null ? void 0 : _a2[providerOptionsName]) == null ? void 0 : _b2.imageDetail
                   };
-                } else if (part.mediaType === "application/pdf") {
-                  if (part.data instanceof URL) {
-                    return {
-                      type: "input_file",
-                      file_url: part.data.toString()
-                    };
-                  }
+                }
+                if (part.data instanceof URL) {
                   return {
                     type: "input_file",
-                    ...typeof part.data === "string" && isFileId(part.data, fileIdPrefixes) ? { file_id: part.data } : {
-                      filename: (_c2 = part.filename) != null ? _c2 : `part-${index}.pdf`,
-                      file_data: `data:application/pdf;base64,${convertToBase64(part.data)}`
-                    }
+                    file_url: part.data.toString()
                   };
-                } else {
+                }
+                if (mediaType !== "application/pdf" && !passThroughUnsupportedFiles) {
                   throw new UnsupportedFunctionalityError({
-                    functionality: `file part media type ${part.mediaType}`
+                    functionality: `file part media type ${mediaType}`
                   });
                 }
+                return {
+                  type: "input_file",
+                  ...typeof part.data === "string" && isFileId(part.data, fileIdPrefixes) ? { file_id: part.data } : {
+                    filename: (_c2 = part.filename) != null ? _c2 : mediaType === "application/pdf" ? `part-${index}.pdf` : `part-${index}`,
+                    file_data: `data:${mediaType};base64,${convertToBase64(part.data)}`
+                  }
+                };
               }
             }
           })
@@ -60327,6 +60350,14 @@ var openaiLanguageModelResponsesOptionsSchema = lazySchema(
        */
       store: boolean().nullish(),
       /**
+       * Whether to pass through non-image file types as generic input files.
+       *
+       * By default, inline file inputs are restricted to images and PDFs.
+       * Enable this when the target OpenAI Responses model supports additional
+       * file media types, such as text/csv.
+       */
+      passThroughUnsupportedFiles: boolean().optional(),
+      /**
        * Whether to use strict JSON schema validation.
        * Defaults to `true`.
        */
@@ -60716,7 +60747,7 @@ var OpenAIResponsesLanguageModel = class {
     toolChoice,
     responseFormat
   }) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     const warnings = [];
     const modelCapabilities = getOpenAILanguageModelCapabilities(this.modelId);
     if (topK != null) {
@@ -60789,7 +60820,8 @@ var OpenAIResponsesLanguageModel = class {
       systemMessageMode: (_c = openaiOptions == null ? void 0 : openaiOptions.systemMessageMode) != null ? _c : isReasoningModel ? "developer" : modelCapabilities.systemMessageMode,
       providerOptionsName,
       fileIdPrefixes: this.config.fileIdPrefixes,
-      store: (_d = openaiOptions == null ? void 0 : openaiOptions.store) != null ? _d : true,
+      passThroughUnsupportedFiles: (_d = openaiOptions == null ? void 0 : openaiOptions.passThroughUnsupportedFiles) != null ? _d : false,
+      store: (_e = openaiOptions == null ? void 0 : openaiOptions.store) != null ? _e : true,
       hasConversation: (openaiOptions == null ? void 0 : openaiOptions.conversation) != null,
       hasLocalShellTool: hasOpenAITool("openai.local_shell"),
       hasShellTool: hasOpenAITool("openai.shell"),
@@ -60797,7 +60829,7 @@ var OpenAIResponsesLanguageModel = class {
       customProviderToolNames: customProviderToolNames.size > 0 ? customProviderToolNames : void 0
     });
     warnings.push(...inputWarnings);
-    const strictJsonSchema = (_e = openaiOptions == null ? void 0 : openaiOptions.strictJsonSchema) != null ? _e : true;
+    const strictJsonSchema = (_f = openaiOptions == null ? void 0 : openaiOptions.strictJsonSchema) != null ? _f : true;
     let include = openaiOptions == null ? void 0 : openaiOptions.include;
     function addInclude(key) {
       if (include == null) {
@@ -60813,9 +60845,9 @@ var OpenAIResponsesLanguageModel = class {
     if (topLogprobs) {
       addInclude("message.output_text.logprobs");
     }
-    const webSearchToolName = (_f = tools == null ? void 0 : tools.find(
+    const webSearchToolName = (_g = tools == null ? void 0 : tools.find(
       (tool) => tool.type === "provider" && (tool.id === "openai.web_search" || tool.id === "openai.web_search_preview")
-    )) == null ? void 0 : _f.name;
+    )) == null ? void 0 : _g.name;
     if (webSearchToolName) {
       addInclude("web_search_call.action.sources");
     }
@@ -60838,7 +60870,7 @@ var OpenAIResponsesLanguageModel = class {
             format: responseFormat.schema != null ? {
               type: "json_schema",
               strict: strictJsonSchema,
-              name: (_g = responseFormat.name) != null ? _g : "response",
+              name: (_h = responseFormat.name) != null ? _h : "response",
               description: responseFormat.description,
               schema: responseFormat.schema
             } : { type: "json_object" }
@@ -60927,9 +60959,9 @@ var OpenAIResponsesLanguageModel = class {
       });
       delete baseArgs.service_tier;
     }
-    const shellToolEnvType = (_j = (_i = (_h = tools == null ? void 0 : tools.find(
+    const shellToolEnvType = (_k = (_j = (_i = tools == null ? void 0 : tools.find(
       (tool) => tool.type === "provider" && tool.id === "openai.shell"
-    )) == null ? void 0 : _h.args) == null ? void 0 : _i.environment) == null ? void 0 : _j.type;
+    )) == null ? void 0 : _i.args) == null ? void 0 : _j.environment) == null ? void 0 : _k.type;
     const isShellProviderExecuted = shellToolEnvType === "containerAuto" || shellToolEnvType === "containerReference";
     return {
       webSearchToolName,
@@ -62707,7 +62739,7 @@ var OpenAITranscriptionModel = class {
 };
 
 // src/version.ts
-var VERSION$3 = "3.0.63" ;
+var VERSION$3 = "3.0.64" ;
 
 // src/openai-provider.ts
 function createOpenAI(options = {}) {
@@ -65038,7 +65070,7 @@ async function getVercelRequestId() {
 }
 
 // src/version.ts
-var VERSION$2 = "3.0.114" ;
+var VERSION$2 = "3.0.115" ;
 
 // src/gateway-provider.ts
 var AI_GATEWAY_PROTOCOL_VERSION = "0.0.1";
@@ -67174,7 +67206,7 @@ function detectMediaType({
 }
 
 // src/version.ts
-var VERSION = "6.0.182" ;
+var VERSION = "6.0.183" ;
 
 // src/util/download/download.ts
 var download = async ({
@@ -70991,11 +71023,12 @@ async function getInstructions(inputs) {
         const globber = await create(inputs.file);
         for await (const file of globber.globGenerator()) {
             const text = readFileSync$1(file, 'utf8').trim();
+            const path = relative(process.env.GITHUB_WORKSPACE || '', file);
             startGroup(file);
             console.log(text);
             endGroup();
             if (text)
-                results.push(text);
+                results.push(`--- Knowledge File: ${path} ---\n\n${text}`);
         }
     }
     return results;
