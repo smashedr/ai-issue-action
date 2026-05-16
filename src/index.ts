@@ -6,6 +6,7 @@ import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 import { generateText } from 'ai'
 import { readFileSync } from 'node:fs'
+import { relative } from 'node:path'
 import { inspect } from 'node:util'
 
 // Inputs
@@ -118,15 +119,18 @@ function getModel(inputs: Inputs) {
 
 async function getInstructions(inputs: Inputs): Promise<string[]> {
   const results: string[] = []
+  // const metaText = `You are a helpful assistant responding to a GitHub Issue created by user @${process.env.GITHUB_ACTOR} in repository ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}`
   if (inputs.instructions) results.push(inputs.instructions)
   if (inputs.file) {
     const globber = await glob.create(inputs.file)
     for await (const file of globber.globGenerator()) {
+      // console.log('file:', file)
       const text = readFileSync(file, 'utf8').trim()
+      const path = relative(process.env.GITHUB_WORKSPACE || '', file)
       core.startGroup(file)
       console.log(text)
       core.endGroup() // body
-      if (text) results.push(text)
+      if (text) results.push(`--- Knowledge File: ${path} ---\n\n${text}`)
     }
   }
   return results

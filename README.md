@@ -117,7 +117,7 @@ Basic example using Gemini Flash (works with free tier API key).
     instructions: 'You are an assistant responding to a GitHub Issue with Training Data:'
 ```
 
-With file instructions (you need to check out the files).
+With file instructions (you need to check out any files).
 
 ```yaml
 name: 'Issue'
@@ -143,8 +143,12 @@ jobs:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
         with:
           model: gemini-2.5-flash
-          instructions: 'You are an assistant responding to a GitHub Issue with Training Data:'
-    file: .github/instructions/*.md
+          instructions: |
+            You are a helpful assistant responding to a GitHub Issue created by user @${{ github.actor }}
+            in the repository ${{ github.server_url }}/${{ github.repository }}
+            Provide initial triage and troubleshooting steps, then gather any additional information needed to proceed.
+            Respond using your general knowledge and the following knowledge files:
+          file: .github/instructions/*.md
 ```
 
 Using an App Token.

@@ -16,10 +16,10 @@
     "@actions/core": "^3.0.1",
     "@actions/github": "^9.1.1",
     "@actions/glob": "^0.7.0",
-    "@ai-sdk/anthropic": "^3.0.77",
-    "@ai-sdk/google": "^3.0.73",
-    "@ai-sdk/openai": "^3.0.63",
-    "ai": "^6.0.182"
+    "@ai-sdk/anthropic": "^3.0.78",
+    "@ai-sdk/google": "^3.0.74",
+    "@ai-sdk/openai": "^3.0.64",
+    "ai": "^6.0.183"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -27,12 +27,12 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
-    "@types/node": "^25.7.0",
+    "@types/node": "^25.8.0",
     "@typescript-eslint/eslint-plugin": "^8.59.3",
     "@typescript-eslint/parser": "^8.59.3",
-    "eslint": "^10.3.0",
+    "eslint": "^10.4.0",
     "prettier": "^3.8.3",
-    "rollup": "^4.60.3",
+    "rollup": "^4.60.4",
     "tslib": "^2.8.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3"
