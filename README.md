@@ -133,6 +133,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+      issues: write
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v6
@@ -167,6 +168,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+      issues: write
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v6
@@ -183,8 +185,6 @@ jobs:
         with:
           app-id: 146360
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: smashedr
-          repositories: test5
 
       - name: 'AI Issue'
         id: issue
